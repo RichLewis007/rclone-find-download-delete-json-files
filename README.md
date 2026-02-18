@@ -42,3 +42,7 @@ From the project root (with `src` on PYTHONPATH or after `pip install -e .`).
 4. JSON files are downloaded to `{dest}/{remote}-{path}/`
 5. Optionally open in Finder (macOS)
 6. Optionally delete from remote (moved to `remote:deleted-json-files`)
+
+## Author
+
+Rich Lewis - GitHub: [@RichLewis007](https://github.com/RichLewis007)

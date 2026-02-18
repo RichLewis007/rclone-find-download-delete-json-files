@@ -47,6 +47,17 @@ class RcloneJsonApp(App[None]):
         margin: 1 0;
     }
 
+    #path_row Input {
+        width: 1fr;
+        min-width: 10;
+    }
+
+    #path_row #browse {
+        width: auto;
+        min-width: 8;
+        shrink: 0;
+    }
+
     ListView {
         height: 15;
         width: 50;
