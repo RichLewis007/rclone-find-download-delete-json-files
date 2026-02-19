@@ -33,6 +33,7 @@ class RemoteSelectScreen(Screen[None]):
             ListView(id="remotes"),
             Horizontal(
                 Button("Refresh", id="refresh"),
+                Button("Exit", id="exit"),
                 id="buttons",
             ),
             id="main",
@@ -40,6 +41,10 @@ class RemoteSelectScreen(Screen[None]):
 
     def on_mount(self) -> None:
         self._load_remotes()
+
+    @on(Button.Pressed, "#exit")
+    def _exit(self) -> None:
+        self.app.exit()
 
     def _load_remotes(self) -> None:
         error_widget = self.query_one("#error", Static)
