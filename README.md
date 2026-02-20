@@ -1,4 +1,4 @@
-# rclone-json-tui
+# Find, download and delete JSON files from cloud drives
 
 Textual TUI for finding, downloading, and optionally deleting JSON files from rclone remotes.
 
@@ -23,13 +23,13 @@ uv pip install -e .
 ## Usage
 
 ```bash
-rclone-json-tui
+rclone-cleanup-json-files
 ```
 
 Or:
 
 ```bash
-python -m rclone_json_tui.app
+python -m rclone_cleanup_json_files.app
 ```
 
 From the project root (with `src` on PYTHONPATH or after `pip install -e .`).
