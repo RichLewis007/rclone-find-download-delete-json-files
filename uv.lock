@@ -160,7 +160,7 @@ wheels = [
 ]
 
 [[package]]
-name = "rclone-json-tui"
+name = "rclone-cleanup-json-files"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
