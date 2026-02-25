@@ -5,13 +5,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from rclone_json_tui.rclone_service import (
+from rclone_cleanup_json_files.rclone_service import (
     RcloneNotFoundError,
     RcloneService,
 )
 
 
-@patch("rclone_json_tui.rclone_service.run")
+@patch("rclone_cleanup_json_files.rclone_service.run")
 def test_list_remotes_success(mock_run: MagicMock) -> None:
     """list_remotes returns parsed remote names."""
     mock_run.return_value = MagicMock(
@@ -30,7 +30,7 @@ def test_list_remotes_success(mock_run: MagicMock) -> None:
     )
 
 
-@patch("rclone_json_tui.rclone_service.run")
+@patch("rclone_cleanup_json_files.rclone_service.run")
 def test_list_remotes_empty(mock_run: MagicMock) -> None:
     """list_remotes returns empty list when no remotes."""
     mock_run.return_value = MagicMock(stdout="\n", stderr="", returncode=0)
@@ -39,7 +39,7 @@ def test_list_remotes_empty(mock_run: MagicMock) -> None:
     assert result == []
 
 
-@patch("rclone_json_tui.rclone_service.run")
+@patch("rclone_cleanup_json_files.rclone_service.run")
 def test_list_remotes_not_found(mock_run: MagicMock) -> None:
     """list_remotes raises RcloneNotFoundError when rclone not in PATH."""
     mock_run.side_effect = FileNotFoundError("rclone not found")
@@ -49,7 +49,7 @@ def test_list_remotes_not_found(mock_run: MagicMock) -> None:
     assert "not found" in str(exc_info.value)
 
 
-@patch("rclone_json_tui.rclone_service.run")
+@patch("rclone_cleanup_json_files.rclone_service.run")
 def test_list_remote_dirs_success(mock_run: MagicMock) -> None:
     """list_remote_dirs returns dirs with trailing slashes stripped."""
     mock_run.return_value = MagicMock(
@@ -68,7 +68,7 @@ def test_list_remote_dirs_success(mock_run: MagicMock) -> None:
     )
 
 
-@patch("rclone_json_tui.rclone_service.run")
+@patch("rclone_cleanup_json_files.rclone_service.run")
 def test_find_json_files(mock_run: MagicMock) -> None:
     """find_json_files returns correct stats."""
     mock_run.return_value = MagicMock(
@@ -83,7 +83,7 @@ def test_find_json_files(mock_run: MagicMock) -> None:
     assert "a/file1.json" in result.file_paths
 
 
-@patch("rclone_json_tui.rclone_service.run")
+@patch("rclone_cleanup_json_files.rclone_service.run")
 def test_find_json_files_root_path(mock_run: MagicMock) -> None:
     """find_json_files uses remote: when path is empty."""
     mock_run.return_value = MagicMock(stdout="", stderr="", returncode=0)
@@ -94,7 +94,7 @@ def test_find_json_files_root_path(mock_run: MagicMock) -> None:
     assert "gdrive:" == call_args[-1]
 
 
-@patch("rclone_json_tui.rclone_service.subprocess")
+@patch("rclone_cleanup_json_files.rclone_service.subprocess")
 def test_run_copy_streaming_yields_lines(mock_subprocess: MagicMock) -> None:
     """run_copy_streaming yields output lines."""
 
