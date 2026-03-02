@@ -1,7 +1,7 @@
 [project]
-name = "rclone-json-tui"
+name = "rclone-cleanup-json-files"
 version = "0.1.0"
-description = "Textual TUI for finding, downloading, and optionally deleting JSON files from rclone remotes"
+description = "Find, download and delete JSON files from cloud drives"
 authors = [
     { name = "Rich Lewis - GitHub: @RichLewis007" }
 ]
@@ -20,7 +20,7 @@ dev = [
 ]
 
 [project.scripts]
-rclone-json-tui = "rclone_json_tui.app:main"
+rclone-cleanup-json-files = "rclone_cleanup_json_files.app:main"
 
 [build-system]
 requires = ["hatchling"]
