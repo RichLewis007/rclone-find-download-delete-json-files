@@ -1,5 +1,6 @@
 """Textual screens for rclone-cleanup-json-files."""
 
+import sys
 from pathlib import Path
 
 from textual import on, work
@@ -262,12 +263,24 @@ class ProgressScreen(Screen[None]):
                 id="stats",
             ),
             Log(highlight=True, id="log"),
+            Horizontal(
+                Button("Back", id="back"),
+                id="error_buttons",
+            ),
             id="main",
         )
 
     def on_mount(self) -> None:
         self._dest_folder.mkdir(parents=True, exist_ok=True)
+        self.query_one("#error_buttons", Horizontal).display = False
         self.run_worker(self._do_copy())
+
+    def _show_back_button(self) -> None:
+        self.query_one("#error_buttons", Horizontal).display = True
+
+    @on(Button.Pressed, "#back")
+    def _back(self) -> None:
+        self.app.pop_screen()
 
     @work
     async def _do_copy(self) -> None:
@@ -285,8 +298,10 @@ class ProgressScreen(Screen[None]):
             self.app.push_screen(CompleteScreen())
         except RcloneError as e:
             self.call_from_thread(log.write_line, f"Error: {e}")
+            self.call_from_thread(self._show_back_button)
         except Exception as e:
             self.call_from_thread(log.write_line, f"Error: {e}")
+            self.call_from_thread(self._show_back_button)
 
 
 class MoveProgressScreen(Screen[None]):
@@ -313,11 +328,23 @@ class MoveProgressScreen(Screen[None]):
         yield Vertical(
             Label(f"{mode}Moving JSON files to deleted-json-files", classes="title"),
             Log(highlight=True, id="log"),
+            Horizontal(
+                Button("Close", id="close"),
+                id="error_buttons",
+            ),
             id="main",
         )
 
     def on_mount(self) -> None:
+        self.query_one("#error_buttons", Horizontal).display = False
         self.run_worker(self._do_move())
+
+    def _show_close_button(self) -> None:
+        self.query_one("#error_buttons", Horizontal).display = True
+
+    @on(Button.Pressed, "#close")
+    def _close(self) -> None:
+        self.dismiss(False)
 
     @work
     async def _do_move(self) -> None:
@@ -332,10 +359,10 @@ class MoveProgressScreen(Screen[None]):
             self.call_from_thread(self.dismiss, True)
         except RcloneError as e:
             self.call_from_thread(log.write_line, f"Error: {e}")
-            self.call_from_thread(self.dismiss, False)
+            self.call_from_thread(self._show_close_button)
         except Exception as e:
             self.call_from_thread(log.write_line, f"Error: {e}")
-            self.call_from_thread(self.dismiss, False)
+            self.call_from_thread(self._show_close_button)
 
 
 class CompleteScreen(Screen[None]):
@@ -376,8 +403,6 @@ class CompleteScreen(Screen[None]):
             finder_btn.display = False
 
     def _is_darwin(self) -> bool:
-        import sys
-
         return sys.platform == "darwin"
 
     @on(Button.Pressed, "#finder")
@@ -408,17 +433,26 @@ class CompleteScreen(Screen[None]):
         if not rclone or not remote:
             self.notify("No remote selected.")
             return
-        await self.push_screen_wait(
+        move_ok = await self.push_screen_wait(
             MoveProgressScreen(rclone, remote, remote_path or "", dry_run=dry_run)
         )
+        if move_ok is False:
+            self.notify("Move to deleted-json-files failed. See log for details.")
+            return
         if dry_run:
             do_real = await self.push_screen_wait(
                 ConfirmScreen("Dry run complete. Proceed for real?")
             )
             if do_real:
-                await self.push_screen_wait(
-                    MoveProgressScreen(rclone, remote, remote_path or "", dry_run=False)
+                real_ok = await self.push_screen_wait(
+                    MoveProgressScreen(
+                        rclone, remote, remote_path or "", dry_run=False
+                    )
                 )
+                if real_ok is False:
+                    self.notify(
+                        "Move to deleted-json-files failed. See log for details."
+                    )
 
     @on(Button.Pressed, "#quit")
     def _quit(self) -> None:
@@ -428,9 +462,15 @@ class CompleteScreen(Screen[None]):
 class ConfirmScreen(ModalScreen[bool | None]):
     """Simple Yes/No modal."""
 
+    BINDINGS = [("escape", "dismiss_none", "Cancel")]
+
     def __init__(self, message: str, **kwargs) -> None:
         super().__init__(**kwargs)
         self._message = message
+
+    def action_dismiss_none(self) -> None:
+        """Dismiss with None (cancel) on ESC."""
+        self.dismiss(None)
 
     def compose(self) -> None:
         yield Container(

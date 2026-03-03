@@ -1,6 +1,6 @@
 # Find, download and delete JSON files from cloud drives
 
-Textual TUI for finding, downloading, and optionally deleting JSON files from rclone remotes.
+Textual TUI for finding, downloading, and optionally deleting JSON files from rclone remotes. Files are moved to `remote:deleted-json-files` (not permanently deleted) so you can recover them if needed.
 
 ## Requirements
 
@@ -41,7 +41,7 @@ From the project root (with `src` on PYTHONPATH or after `pip install -e .`).
 3. Enter or browse to a local destination folder
 4. JSON files are downloaded to `{dest}/{remote}-{path}/`
 5. Optionally open in Finder (macOS)
-6. Optionally delete from remote (moved to `remote:deleted-json-files`)
+6. Optionally move from remote to `remote:deleted-json-files` (backup, not permanent delete)
 
 ## Author
 
