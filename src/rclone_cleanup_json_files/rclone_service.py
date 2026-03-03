@@ -46,7 +46,9 @@ class RcloneService:
         except FileNotFoundError as e:
             raise RcloneNotFoundError("rclone executable not found in PATH") from e
         except CalledProcessError as e:
-            raise RcloneError(f"rclone listremotes failed: {e.stderr}") from e
+            raise RcloneError(
+                f"rclone listremotes failed: {e.stderr or ''}"
+            ) from e
 
         lines = [
             line.strip().rstrip(":") for line in result.stdout.strip().splitlines()
@@ -62,8 +64,12 @@ class RcloneService:
                 text=True,
                 check=True,
             )
+        except FileNotFoundError as e:
+            raise RcloneNotFoundError("rclone executable not found in PATH") from e
         except CalledProcessError as e:
-            raise RcloneError(f"rclone lsf failed: {e.stderr}") from e
+            raise RcloneError(
+                f"rclone lsf failed: {e.stderr or ''}"
+            ) from e
 
         dirs = [
             line.rstrip("/").strip()
@@ -91,8 +97,12 @@ class RcloneService:
                 text=True,
                 check=True,
             )
+        except FileNotFoundError as e:
+            raise RcloneNotFoundError("rclone executable not found in PATH") from e
         except CalledProcessError as e:
-            raise RcloneError(f"rclone lsf failed: {e.stderr}") from e
+            raise RcloneError(
+                f"rclone lsf failed: {e.stderr or ''}"
+            ) from e
 
         paths = [p.strip() for p in result.stdout.strip().splitlines() if p.strip()]
         folders: set[str] = set()

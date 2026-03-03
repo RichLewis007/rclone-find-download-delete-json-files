@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from rclone_cleanup_json_files.rclone_service import (
+    RcloneError,
     RcloneNotFoundError,
     RcloneService,
 )
@@ -110,3 +111,62 @@ def test_run_copy_streaming_yields_lines(mock_subprocess: MagicMock) -> None:
     svc = RcloneService(rclone_cmd="rclone")
     lines = list(svc.run_copy_streaming("gdrive", "backups", Path("/tmp/dest")))
     assert lines == ["line1", "line2", "line3"]
+
+
+@patch("rclone_cleanup_json_files.rclone_service.subprocess")
+def test_run_copy_streaming_nonzero_exit_raises(mock_subprocess: MagicMock) -> None:
+    """run_copy_streaming raises RcloneError when rclone exits non-zero."""
+
+    def make_proc(*args: object, **kwargs: object) -> MagicMock:
+        p = MagicMock()
+        p.stdout = iter(["error output\n"])
+        p.wait.return_value = 0
+        p.returncode = 1
+        return p
+
+    mock_subprocess.Popen.side_effect = make_proc
+
+    svc = RcloneService(rclone_cmd="rclone")
+    with pytest.raises(RcloneError) as exc_info:
+        list(svc.run_copy_streaming("gdrive", "backups", Path("/tmp/dest")))
+    assert "exited with code 1" in str(exc_info.value)
+
+
+@patch("rclone_cleanup_json_files.rclone_service.subprocess")
+def test_run_move_streaming_yields_lines(mock_subprocess: MagicMock) -> None:
+    """run_move_streaming yields output lines."""
+
+    def make_proc(*args: object, **kwargs: object) -> MagicMock:
+        p = MagicMock()
+        p.stdout = iter(["Moving file1\n", "Moving file2\n"])
+        p.wait.return_value = 0
+        p.returncode = 0
+        return p
+
+    mock_subprocess.Popen.side_effect = make_proc
+
+    svc = RcloneService(rclone_cmd="rclone")
+    lines = list(
+        svc.run_move_streaming("gdrive", "backups", dry_run=False)
+    )
+    assert lines == ["Moving file1", "Moving file2"]
+
+
+@patch("rclone_cleanup_json_files.rclone_service.run")
+def test_list_remote_dirs_not_found(mock_run: MagicMock) -> None:
+    """list_remote_dirs raises RcloneNotFoundError when rclone not in PATH."""
+    mock_run.side_effect = FileNotFoundError("rclone not found")
+    svc = RcloneService(rclone_cmd="rclone")
+    with pytest.raises(RcloneNotFoundError) as exc_info:
+        svc.list_remote_dirs("gdrive")
+    assert "not found" in str(exc_info.value)
+
+
+@patch("rclone_cleanup_json_files.rclone_service.run")
+def test_find_json_files_not_found(mock_run: MagicMock) -> None:
+    """find_json_files raises RcloneNotFoundError when rclone not in PATH."""
+    mock_run.side_effect = FileNotFoundError("rclone not found")
+    svc = RcloneService(rclone_cmd="rclone")
+    with pytest.raises(RcloneNotFoundError) as exc_info:
+        svc.find_json_files("gdrive", "backups")
+    assert "not found" in str(exc_info.value)
