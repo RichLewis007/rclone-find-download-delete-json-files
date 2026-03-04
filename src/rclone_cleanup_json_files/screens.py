@@ -2,6 +2,7 @@
 
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
 
 from textual import on, work
 from textual.containers import Container, Horizontal, Vertical
@@ -15,6 +16,9 @@ from .rclone_service import (
     RcloneNotFoundError,
     RcloneService,
 )
+
+if TYPE_CHECKING:
+    from .app import RcloneCleanupJsonApp
 
 
 class RemoteSelectScreen(Screen[None]):
@@ -73,7 +77,7 @@ class RemoteSelectScreen(Screen[None]):
         idx = event.list_view.index
         if idx is not None and 0 <= idx < len(self._remotes):
             remote = self._remotes[idx]
-            self.app.remote = remote  # type: ignore[attr-defined]
+            cast("RcloneCleanupJsonApp", self.app).remote = remote
             self.app.push_screen(RemotePathScreen(self._rclone, remote=remote))
 
 
@@ -137,7 +141,7 @@ class RemotePathScreen(Screen[None]):
             path = self._dirs[idx - 1]
         else:
             return
-        self.app.remote_path = path  # type: ignore[attr-defined]
+        cast("RcloneCleanupJsonApp", self.app).remote_path = path
         self.app.push_screen(DestPathScreen(self._rclone, self._remote, path))
 
 
@@ -292,9 +296,10 @@ class ProgressScreen(Screen[None]):
                 self._dest_folder,
             ):
                 self.call_from_thread(log.write_line, line)
-            self.app.base_dest = self._base_dest  # type: ignore[attr-defined]
-            self.app.dest_folder = self._dest_folder  # type: ignore[attr-defined]
-            self.app.stats = self._stats  # type: ignore[attr-defined]
+            app = cast("RcloneCleanupJsonApp", self.app)
+            app.base_dest = self._base_dest
+            app.dest_folder = self._dest_folder
+            app.stats = self._stats
             self.app.push_screen(CompleteScreen())
         except RcloneError as e:
             self.call_from_thread(log.write_line, f"Error: {e}")
@@ -387,9 +392,10 @@ class CompleteScreen(Screen[None]):
         )
 
     def on_mount(self) -> None:
-        base = getattr(self.app, "base_dest", None)
-        dest = getattr(self.app, "dest_folder", None)
-        stats = getattr(self.app, "stats", None)
+        app = cast("RcloneCleanupJsonApp", self.app)
+        base = app.base_dest
+        dest = app.dest_folder
+        stats = app.stats
         summary = self.query_one("#summary", Static)
         if base and dest and stats:
             summary.update(
@@ -409,17 +415,19 @@ class CompleteScreen(Screen[None]):
     def _open_finder(self) -> None:
         import subprocess
 
-        base = getattr(self.app, "base_dest", None)
-        if base and self._is_darwin():
-            subprocess.run(["open", str(base)], check=False)  # noqa: S603
+        app = cast("RcloneCleanupJsonApp", self.app)
+        if app.base_dest and self._is_darwin():
+            subprocess.run(["open", str(app.base_dest)], check=False)  # noqa: S603
 
     @on(Button.Pressed, "#delete")
     @work
     async def _delete(self) -> None:
+        app = cast("RcloneCleanupJsonApp", self.app)
+        path_part = app.remote_path or "root"
         confirm = await self.push_screen_wait(
             ConfirmScreen(
                 "Delete JSON files from remote? "
-                "They will be moved to remote:deleted-json-files."
+                f"They will be moved to remote:deleted-json-files/{path_part}."
             )
         )
         if confirm is not True:
@@ -427,9 +435,9 @@ class CompleteScreen(Screen[None]):
         dry_run = await self.push_screen_wait(ConfirmScreen("Run dry-run first?"))
         if dry_run is None:
             return
-        rclone = getattr(self.app, "rclone", None)
-        remote = getattr(self.app, "remote", None)
-        remote_path = getattr(self.app, "remote_path", "")
+        rclone = app.rclone
+        remote = app.remote
+        remote_path = app.remote_path
         if not rclone or not remote:
             self.notify("No remote selected.")
             return
