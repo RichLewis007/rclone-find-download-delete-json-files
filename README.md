@@ -14,10 +14,10 @@ Textual TUI for finding, downloading, and optionally deleting JSON files from rc
 pip install -e .
 ```
 
-Or with uv:
+Or with [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv pip install -e .
+uv sync --extra dev
 ```
 
 ## Usage
@@ -26,13 +26,19 @@ uv pip install -e .
 rclone-cleanup-json-files
 ```
 
+Or with uv:
+
+```bash
+uv run rclone-cleanup-json-files
+```
+
 Or:
 
 ```bash
 python -m rclone_cleanup_json_files.app
 ```
 
-From the project root (with `src` on PYTHONPATH or after `pip install -e .`).
+(From the project root with `src` on PYTHONPATH or after `pip install -e .`.)
 
 ## Flow
 
@@ -41,7 +47,7 @@ From the project root (with `src` on PYTHONPATH or after `pip install -e .`).
 3. Enter or browse to a local destination folder
 4. JSON files are downloaded to `{dest}/{remote}-{path}/`
 5. Optionally open in Finder (macOS)
-6. Optionally move from remote to `remote:deleted-json-files` (backup, not permanent delete)
+6. Optionally move from remote to `remote:deleted-json-files/{path}` (backup, not permanent delete)
 
 ## Author
 

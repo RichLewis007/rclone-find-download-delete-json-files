@@ -1,6 +1,7 @@
 """Rclone subprocess wrappers for listing, copying, and moving JSON files."""
 
 import subprocess
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from subprocess import CalledProcessError, run
@@ -25,7 +26,6 @@ class JsonFileStats:
 
     file_count: int
     folder_count: int
-    file_paths: list[str]
 
 
 class RcloneService:
@@ -114,7 +114,6 @@ class RcloneService:
         return JsonFileStats(
             file_count=len(paths),
             folder_count=len(folders),
-            file_paths=paths,
         )
 
     def run_copy_streaming(
@@ -143,23 +142,32 @@ class RcloneService:
         remote_path: str,
         dry_run: bool = False,
     ) -> Generator[str, None, None]:
-        """Run move to backup and yield output lines for streaming display."""
-        src = f"{remote}:{remote_path}" if remote_path else f"{remote}:"
-        dest = f"{remote}:deleted-json-files"
-        cmd = [
-            self._rclone,
-            "move",
-            src,
-            dest,
-            "--include",
-            "*.json",
-            "--ignore-case",
-            "--delete-empty-src-dirs",
-            "-P",
-        ]
-        if dry_run:
-            cmd.append("--dry-run")
-        yield from self._run_and_yield_lines(cmd)
+        """Sync with --backup-dir; JSON files move to backup, not deleted."""
+        dest = f"{remote}:{remote_path}" if remote_path else f"{remote}:"
+        backup_subdir = remote_path if remote_path else "root"
+        backup_dir = f"{remote}:deleted-json-files/{backup_subdir}"
+
+        with tempfile.TemporaryDirectory(prefix="rclone_empty_") as empty_dir:
+            cmd = [
+                self._rclone,
+                "sync",
+                empty_dir,
+                dest,
+                "--include",
+                "*.json",
+                "--ignore-case",
+                "--backup-dir",
+                backup_dir,
+                "-P",
+            ]
+            if dry_run:
+                cmd.append("--dry-run")
+            yield from self._run_and_yield_lines(cmd)
+
+        # Remove empty dirs from remote (only when not dry-run)
+        if not dry_run:
+            rmdirs_cmd = [self._rclone, "rmdirs", dest, "-P"]
+            yield from self._run_and_yield_lines(rmdirs_cmd)
 
     def _run_and_yield_lines(self, cmd: list[str]) -> Generator[str, None, None]:
         """Run command and yield stdout/stderr lines as they're produced."""
