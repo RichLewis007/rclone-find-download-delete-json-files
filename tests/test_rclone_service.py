@@ -81,7 +81,6 @@ def test_find_json_files(mock_run: MagicMock) -> None:
     result = svc.find_json_files("gdrive", "backups")
     assert result.file_count == 3
     assert result.folder_count == 3  # "a", "b/c", "."
-    assert "a/file1.json" in result.file_paths
 
 
 @patch("rclone_cleanup_json_files.rclone_service.run")
@@ -134,22 +133,47 @@ def test_run_copy_streaming_nonzero_exit_raises(mock_subprocess: MagicMock) -> N
 
 @patch("rclone_cleanup_json_files.rclone_service.subprocess")
 def test_run_move_streaming_yields_lines(mock_subprocess: MagicMock) -> None:
-    """run_move_streaming yields output lines."""
+    """run_move_streaming yields output lines from sync and rmdirs."""
 
-    def make_proc(*args: object, **kwargs: object) -> MagicMock:
+    def make_proc(stdout_lines: list[str]) -> MagicMock:
         p = MagicMock()
-        p.stdout = iter(["Moving file1\n", "Moving file2\n"])
+        p.stdout = iter(stdout_lines)
         p.wait.return_value = 0
         p.returncode = 0
         return p
 
-    mock_subprocess.Popen.side_effect = make_proc
+    mock_subprocess.Popen.side_effect = [
+        make_proc(["Moving file1\n", "Moving file2\n"]),
+        make_proc([]),  # rmdirs has minimal output
+    ]
 
     svc = RcloneService(rclone_cmd="rclone")
-    lines = list(
-        svc.run_move_streaming("gdrive", "backups", dry_run=False)
-    )
+    lines = list(svc.run_move_streaming("gdrive", "backups", dry_run=False))
     assert lines == ["Moving file1", "Moving file2"]
+
+
+@patch("rclone_cleanup_json_files.rclone_service.subprocess")
+def test_run_move_streaming_dry_run_adds_flag(mock_subprocess: MagicMock) -> None:
+    """run_move_streaming adds --dry-run to command when dry_run=True."""
+
+    def make_proc(stdout_lines: list[str]) -> MagicMock:
+        p = MagicMock()
+        p.stdout = iter(stdout_lines)
+        p.wait.return_value = 0
+        p.returncode = 0
+        return p
+
+    mock_subprocess.Popen.side_effect = lambda *a, **k: make_proc([])
+
+    svc = RcloneService(rclone_cmd="rclone")
+    list(svc.run_move_streaming("gdrive", "backups", dry_run=True))
+
+    mock_subprocess.Popen.assert_called_once()
+    cmd = mock_subprocess.Popen.call_args[0][0]
+    assert "--dry-run" in cmd
+    assert "sync" in cmd
+    assert "--backup-dir" in cmd
+    assert "deleted-json-files/backups" in " ".join(cmd)
 
 
 @patch("rclone_cleanup_json_files.rclone_service.run")

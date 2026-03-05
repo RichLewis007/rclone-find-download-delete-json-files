@@ -84,7 +84,7 @@ class RcloneCleanupJsonApp(App[None]):
         self.remote_path: str = ""
         self.base_dest: Path = Path(".")
         self.dest_folder: Path = Path(".")
-        self.stats: JsonFileStats = JsonFileStats(0, 0, [])
+        self.stats: JsonFileStats = JsonFileStats(0, 0)
 
     def compose(self) -> ComposeResult:
         yield Footer()
