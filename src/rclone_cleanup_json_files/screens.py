@@ -25,6 +25,7 @@ class RemoteSelectScreen(Screen[None]):
     """Screen for selecting an rclone remote."""
 
     BINDINGS = [("escape", "app.exit", "Exit")]
+    ESCAPE_TO_MINIMIZE = False  # Let escape trigger our binding, not minimize
 
     def __init__(self, rclone: RcloneService, **kwargs) -> None:
         super().__init__(**kwargs)
