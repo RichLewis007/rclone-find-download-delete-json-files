@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from textual.app import App, ComposeResult
-from textual.widgets import Footer, Header
+from textual.widgets import Footer
 
 from .rclone_service import JsonFileStats, RcloneService
 from .screens import RemoteSelectScreen
@@ -18,6 +18,10 @@ class RcloneCleanupJsonApp(App[None]):
     CSS = """
     Screen {
         align: center middle;
+    }
+
+    Screen > Header {
+        dock: top;
     }
 
     .title {
@@ -87,7 +91,6 @@ class RcloneCleanupJsonApp(App[None]):
         self.stats: JsonFileStats = JsonFileStats(0, 0)
 
     def compose(self) -> ComposeResult:
-        yield Header()
         yield Footer()
 
     def on_mount(self) -> None:
