@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, cast
 from textual import on, work
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen, Screen
-from textual.widgets import Button, Input, Label, ListItem, ListView, Log, Static
+from textual.widgets import Button, Header, Input, Label, ListItem, ListView, Log, Static
 from textual_fspicker import SelectDirectory
 
 from .rclone_service import (
@@ -33,6 +33,7 @@ class RemoteSelectScreen(Screen[None]):
         self._remotes: list[str] = []
 
     def compose(self) -> None:
+        yield Header()
         yield Vertical(
             Label("Select rclone remote", classes="title"),
             Static(id="error", classes="error"),
@@ -96,6 +97,7 @@ class RemotePathScreen(Screen[None]):
         self._dirs: list[str] = []
 
     def compose(self) -> None:
+        yield Header()
         yield Vertical(
             Label(f"Select path on {self._remote}", classes="title"),
             Static(id="error", classes="error"),
@@ -167,6 +169,7 @@ class DestPathScreen(Screen[None]):
         dest_name = (
             f"{self._remote}-{self._remote_path}" if self._remote_path else self._remote
         )
+        yield Header()
         yield Vertical(
             Label("Select local destination folder", classes="title"),
             Label(
@@ -260,6 +263,7 @@ class ProgressScreen(Screen[None]):
         self._dest_folder = base_dest / dest_name
 
     def compose(self) -> None:
+        yield Header()
         yield Vertical(
             Label("Downloading JSON files", classes="title"),
             Static(
@@ -331,6 +335,7 @@ class MoveProgressScreen(Screen[None]):
 
     def compose(self) -> None:
         mode = "Dry run: " if self._dry_run else ""
+        yield Header()
         yield Vertical(
             Label(f"{mode}Moving JSON files to deleted-json-files", classes="title"),
             Log(highlight=True, id="log"),
@@ -380,6 +385,7 @@ class CompleteScreen(Screen[None]):
         super().__init__(**kwargs)
 
     def compose(self) -> None:
+        yield Header()
         yield Vertical(
             Label("Download complete", classes="title"),
             Static(id="summary"),
