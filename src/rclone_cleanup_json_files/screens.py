@@ -25,7 +25,7 @@ class RemoteSelectScreen(Screen[None]):
     """Screen for selecting an rclone remote."""
 
     BINDINGS = [("escape", "app.exit", "Exit")]
-    ESCAPE_TO_MINIMIZE = False  # Let escape trigger our binding, not minimize
+    ESCAPE_TO_MINIMIZE = False
 
     def __init__(self, rclone: RcloneService, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -86,7 +86,8 @@ class RemoteSelectScreen(Screen[None]):
 class RemotePathScreen(Screen[None]):
     """Screen for selecting remote path (top-level dir or root)."""
 
-    BINDINGS = [("escape", "app.pop_screen", "Back")]
+    BINDINGS = [("escape", "app.pop_screen", "Previous page")]
+    ESCAPE_TO_MINIMIZE = False
 
     ROOT_LABEL = "(root - entire remote)"
 
@@ -151,7 +152,8 @@ class RemotePathScreen(Screen[None]):
 class DestPathScreen(Screen[None]):
     """Screen for selecting local destination path."""
 
-    BINDINGS = [("escape", "app.pop_screen", "Back")]
+    BINDINGS = [("escape", "app.pop_screen", "Previous page")]
+    ESCAPE_TO_MINIMIZE = False
 
     def __init__(
         self,
@@ -242,7 +244,8 @@ class DestPathScreen(Screen[None]):
 class ProgressScreen(Screen[None]):
     """Screen showing download progress."""
 
-    BINDINGS = [("escape", "", "Wait")]  # Disable escape during operation
+    BINDINGS = [("escape", "", "Wait")]  # Disable during download
+    ESCAPE_TO_MINIMIZE = False
 
     def __init__(
         self,
@@ -317,7 +320,8 @@ class ProgressScreen(Screen[None]):
 class MoveProgressScreen(Screen[None]):
     """Screen showing move-to-backup progress."""
 
-    BINDINGS = [("escape", "", "Wait")]
+    BINDINGS = [("escape", "", "Wait")]  # Disable during move
+    ESCAPE_TO_MINIMIZE = False
 
     def __init__(
         self,
@@ -379,7 +383,8 @@ class MoveProgressScreen(Screen[None]):
 class CompleteScreen(Screen[None]):
     """Completion screen with Open Finder and Delete options."""
 
-    BINDINGS = [("escape", "app.exit", "Exit")]
+    BINDINGS = [("escape", "app.pop_screen", "Previous page")]
+    ESCAPE_TO_MINIMIZE = False
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
