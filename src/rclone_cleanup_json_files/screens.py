@@ -45,6 +45,7 @@ class RemoteSelectScreen(Screen[None]):
             ),
             id="main",
         )
+        yield Static("Press ESC to exit", classes="footer-hint")
 
     def on_mount(self) -> None:
         self._load_remotes()
@@ -112,6 +113,7 @@ class RemotePathScreen(Screen[None]):
             ),
             id="main",
         )
+        yield Static("Press ESC to return to previous page", classes="footer-hint")
 
     def on_mount(self) -> None:
         self._load_dirs()
@@ -191,6 +193,7 @@ class DestPathScreen(Screen[None]):
             ),
             id="main",
         )
+        yield Static("Press ESC to return to previous page", classes="footer-hint")
 
     @on(Button.Pressed, "#back")
     def _back(self) -> None:
@@ -199,7 +202,7 @@ class DestPathScreen(Screen[None]):
     @on(Button.Pressed, "#browse")
     @work
     async def _browse(self) -> None:
-        if path := await self.push_screen_wait(SelectDirectory()):
+        if path := await self.app.push_screen_wait(SelectDirectory()):
             self.query_one("#path_input", Input).value = str(path)
             self.query_one("#error", Static).update("")
 
@@ -281,6 +284,7 @@ class ProgressScreen(Screen[None]):
             ),
             id="main",
         )
+        yield Static("Press ESC to return to previous page", classes="footer-hint")
 
     def on_mount(self) -> None:
         self._dest_folder.mkdir(parents=True, exist_ok=True)
@@ -349,6 +353,7 @@ class MoveProgressScreen(Screen[None]):
             ),
             id="main",
         )
+        yield Static("Press ESC to return to previous page", classes="footer-hint")
 
     def on_mount(self) -> None:
         self.query_one("#error_buttons", Horizontal).display = False
@@ -402,6 +407,7 @@ class CompleteScreen(Screen[None]):
             ),
             id="main",
         )
+        yield Static("Press ESC to return to previous page", classes="footer-hint")
 
     def on_mount(self) -> None:
         app = cast("RcloneCleanupJsonApp", self.app)
@@ -436,7 +442,7 @@ class CompleteScreen(Screen[None]):
     async def _delete(self) -> None:
         app = cast("RcloneCleanupJsonApp", self.app)
         path_part = app.remote_path or "root"
-        confirm = await self.push_screen_wait(
+        confirm = await self.app.push_screen_wait(
             ConfirmScreen(
                 "Delete JSON files from remote? "
                 f"They will be moved to remote:deleted-json-files/{path_part}."
@@ -444,7 +450,7 @@ class CompleteScreen(Screen[None]):
         )
         if confirm is not True:
             return
-        dry_run = await self.push_screen_wait(ConfirmScreen("Run dry-run first?"))
+        dry_run = await self.app.push_screen_wait(ConfirmScreen("Run dry-run first?"))
         if dry_run is None:
             return
         rclone = app.rclone
@@ -453,18 +459,18 @@ class CompleteScreen(Screen[None]):
         if not rclone or not remote:
             self.notify("No remote selected.")
             return
-        move_ok = await self.push_screen_wait(
+        move_ok = await self.app.push_screen_wait(
             MoveProgressScreen(rclone, remote, remote_path or "", dry_run=dry_run)
         )
         if move_ok is False:
             self.notify("Move to deleted-json-files failed. See log for details.")
             return
         if dry_run:
-            do_real = await self.push_screen_wait(
+            do_real = await self.app.push_screen_wait(
                 ConfirmScreen("Dry run complete. Proceed for real?")
             )
             if do_real:
-                real_ok = await self.push_screen_wait(
+                real_ok = await self.app.push_screen_wait(
                     MoveProgressScreen(
                         rclone, remote, remote_path or "", dry_run=False
                     )
@@ -503,6 +509,7 @@ class ConfirmScreen(ModalScreen[bool | None]):
             ),
             id="dialog",
         )
+        yield Static("Press ESC to cancel", classes="footer-hint")
 
     @on(Button.Pressed, "#yes")
     def _yes(self) -> None:

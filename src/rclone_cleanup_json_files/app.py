@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from textual.app import App, ComposeResult
+from textual.events import Key
 from textual.widgets import Footer
 
 from .rclone_service import JsonFileStats, RcloneService
@@ -79,6 +80,14 @@ class RcloneCleanupJsonApp(App[None]):
         width: auto;
         min-width: 40;
     }
+
+    .footer-hint {
+        dock: bottom;
+        content-align: center middle;
+        height: 1;
+        padding: 0 1;
+        width: 100%;
+    }
     """
 
     def __init__(self, rclone: RcloneService | None = None, **kwargs: Any) -> None:
@@ -95,6 +104,12 @@ class RcloneCleanupJsonApp(App[None]):
 
     def on_mount(self) -> None:
         self.push_screen(RemoteSelectScreen(self.rclone))
+
+    def on_key(self, event: Key) -> None:
+        if event.key == "escape" and len(self.screen_stack) == 1:
+            self.exit()
+            event.prevent_default()
+            event.stop()
 
 
 def main() -> None:
