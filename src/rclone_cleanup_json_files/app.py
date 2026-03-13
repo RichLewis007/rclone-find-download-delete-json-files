@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from textual.app import App, ComposeResult
-from textual.events import Key
+from textual.binding import Binding
 from textual.widgets import Footer
 
 from .rclone_service import JsonFileStats, RcloneService
@@ -15,6 +15,10 @@ class RcloneCleanupJsonApp(App[None]):
     """Find, download and delete JSON files from cloud drives."""
 
     TITLE = "Find, download and delete JSON files from cloud drives"
+
+    BINDINGS = [
+        Binding("escape", "escape_back_or_exit", "Exit", priority=True),
+    ]
 
     CSS = """
     Screen {
@@ -105,11 +109,21 @@ class RcloneCleanupJsonApp(App[None]):
     def on_mount(self) -> None:
         self.push_screen(RemoteSelectScreen(self.rclone))
 
-    def on_key(self, event: Key) -> None:
-        if event.key == "escape" and len(self.screen_stack) == 1:
+    def action_escape_back_or_exit(self) -> None:
+        """Exit on first screen, pop/dismiss otherwise. Priority binding overrides ListView."""
+        from textual.screen import ModalScreen
+
+        from .screens import ProgressScreen, MoveProgressScreen, RemoteSelectScreen
+
+        top = self.screen_stack[-1]
+        if isinstance(top, RemoteSelectScreen):
             self.exit()
-            event.prevent_default()
-            event.stop()
+        elif isinstance(top, ModalScreen):
+            top.dismiss(None)
+        elif isinstance(top, (ProgressScreen, MoveProgressScreen)):
+            pass  # ESC disabled during progress
+        else:
+            self.pop_screen()
 
 
 def main() -> None:
