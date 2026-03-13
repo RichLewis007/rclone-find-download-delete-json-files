@@ -50,6 +50,9 @@ class RemoteSelectScreen(Screen[None]):
     def on_mount(self) -> None:
         self._load_remotes()
 
+    def on_screen_resume(self) -> None:
+        self.query_one("#remotes", ListView).index = None
+
     @on(Button.Pressed, "#exit")
     def _exit(self) -> None:
         self.app.exit()
@@ -117,6 +120,9 @@ class RemotePathScreen(Screen[None]):
 
     def on_mount(self) -> None:
         self._load_dirs()
+
+    def on_screen_resume(self) -> None:
+        self.query_one("#paths", ListView).index = None
 
     def _load_dirs(self) -> None:
         error_widget = self.query_one("#error", Static)
