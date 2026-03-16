@@ -68,6 +68,17 @@ class RcloneCleanupJsonApp(App[None]):
         min-width: 8;
     }
 
+    #loading_row {
+        margin: 0 0 1 0;
+        height: auto;
+        align-horizontal: center;
+    }
+
+    #loading_label {
+        margin-left: 1;
+        color: $text-muted;
+    }
+
     ListView {
         height: 15;
         width: 50;
@@ -110,10 +121,13 @@ class RcloneCleanupJsonApp(App[None]):
         self.push_screen(RemoteSelectScreen(self.rclone))
 
     def action_escape_back_or_exit(self) -> None:
-        """Exit on first screen, pop/dismiss otherwise. Priority binding overrides ListView."""
+        """Exit on first screen; otherwise pop or dismiss.
+
+        Priority binding overrides ListView behavior.
+        """
         from textual.screen import ModalScreen
 
-        from .screens import ProgressScreen, MoveProgressScreen, RemoteSelectScreen
+        from .screens import MoveProgressScreen, ProgressScreen, RemoteSelectScreen
 
         top = self.screen_stack[-1]
         if isinstance(top, RemoteSelectScreen):
