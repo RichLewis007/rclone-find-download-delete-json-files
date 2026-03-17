@@ -7,7 +7,17 @@ from typing import TYPE_CHECKING, cast
 from textual import on, work
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen, Screen
-from textual.widgets import Button, Header, Input, Label, ListItem, ListView, Log, Static
+from textual.widgets import (
+    Button,
+    Header,
+    Input,
+    Label,
+    ListItem,
+    ListView,
+    LoadingIndicator,
+    Log,
+    Static,
+)
 from textual_fspicker import SelectDirectory
 
 from .rclone_service import (
@@ -39,6 +49,11 @@ class RemoteSelectScreen(Screen[None]):
             Static(id="error", classes="error"),
             ListView(id="remotes"),
             Horizontal(
+                LoadingIndicator(id="loading_spinner"),
+                Label("Loading remotes...", id="loading_label"),
+                id="loading_row",
+            ),
+            Horizontal(
                 Button("Refresh", id="refresh"),
                 Button("Exit", id="exit"),
                 id="buttons",
@@ -48,10 +63,12 @@ class RemoteSelectScreen(Screen[None]):
         yield Static("Press ESC to exit", classes="footer-hint")
 
     def on_mount(self) -> None:
+        self.query_one("#loading_row", Horizontal).display = False
         self._load_remotes()
 
     def on_screen_resume(self) -> None:
         self.query_one("#remotes", ListView).index = None
+        self._set_loading(False)
 
     @on(Button.Pressed, "#exit")
     def _exit(self) -> None:
@@ -60,19 +77,40 @@ class RemoteSelectScreen(Screen[None]):
     def _load_remotes(self) -> None:
         error_widget = self.query_one("#error", Static)
         error_widget.update("")
+        self._set_loading(True, "Loading remotes...")
+        self._load_remotes_worker()
+
+    def _set_loading(self, loading: bool, message: str = "Working...") -> None:
+        self.query_one("#loading_label", Label).update(message)
+        self.query_one("#loading_row", Horizontal).display = loading
+        self.query_one("#remotes", ListView).disabled = loading
+        self.query_one("#refresh", Button).disabled = loading
+
+    @work(thread=True, exclusive=True)
+    def _load_remotes_worker(self) -> None:
+        try:
+            remotes = self._rclone.list_remotes()
+            self.call_from_thread(self._apply_remotes, remotes, "")
+        except RcloneNotFoundError as e:
+            self.call_from_thread(self._apply_remotes, [], str(e))
+        except RcloneError as e:
+            self.call_from_thread(self._apply_remotes, [], str(e))
+
+    def _apply_remotes(self, remotes: list[str], error: str) -> None:
+        self._set_loading(False)
+        error_widget = self.query_one("#error", Static)
         list_view = self.query_one("#remotes", ListView)
         list_view.clear()
-        try:
-            self._remotes = self._rclone.list_remotes()
-            if not self._remotes:
-                error_widget.update("No remotes configured. Run 'rclone config' first.")
-                return
-            for r in self._remotes:
-                list_view.append(ListItem(Label(r)))
-        except RcloneNotFoundError as e:
-            error_widget.update(str(e))
-        except RcloneError as e:
-            error_widget.update(str(e))
+        self._remotes = remotes
+        if error:
+            error_widget.update(error)
+            return
+        if not self._remotes:
+            error_widget.update("No remotes configured. Run 'rclone config' first.")
+            return
+        error_widget.update("")
+        for remote in self._remotes:
+            list_view.append(ListItem(Label(remote)))
 
     @on(Button.Pressed, "#refresh")
     def _refresh(self) -> None:
@@ -84,6 +122,7 @@ class RemoteSelectScreen(Screen[None]):
         if idx is not None and 0 <= idx < len(self._remotes):
             remote = self._remotes[idx]
             cast("RcloneCleanupJsonApp", self.app).remote = remote
+            self._set_loading(True, "Opening remote...")
             self.app.push_screen(RemotePathScreen(self._rclone, remote=remote))
 
 
@@ -111,6 +150,11 @@ class RemotePathScreen(Screen[None]):
                 id="paths",
             ),
             Horizontal(
+                LoadingIndicator(id="loading_spinner"),
+                Label("Loading paths...", id="loading_label"),
+                id="loading_row",
+            ),
+            Horizontal(
                 Button("Back", id="back"),
                 id="buttons",
             ),
@@ -119,23 +163,46 @@ class RemotePathScreen(Screen[None]):
         yield Static("Press ESC to return to previous page", classes="footer-hint")
 
     def on_mount(self) -> None:
+        self.query_one("#loading_row", Horizontal).display = False
         self._load_dirs()
 
     def on_screen_resume(self) -> None:
         self.query_one("#paths", ListView).index = None
+        self._set_loading(False)
 
     def _load_dirs(self) -> None:
         error_widget = self.query_one("#error", Static)
         error_widget.update("")
+        self._set_loading(True, "Loading paths...")
+        self._load_dirs_worker()
+
+    def _set_loading(self, loading: bool, message: str = "Working...") -> None:
+        self.query_one("#loading_label", Label).update(message)
+        self.query_one("#loading_row", Horizontal).display = loading
+        self.query_one("#paths", ListView).disabled = loading
+        self.query_one("#back", Button).disabled = loading
+
+    @work(thread=True, exclusive=True)
+    def _load_dirs_worker(self) -> None:
+        try:
+            dirs = self._rclone.list_remote_dirs(self._remote)
+            self.call_from_thread(self._apply_dirs, dirs, "")
+        except RcloneError as e:
+            self.call_from_thread(self._apply_dirs, [], str(e))
+
+    def _apply_dirs(self, dirs: list[str], error: str) -> None:
+        self._set_loading(False)
+        error_widget = self.query_one("#error", Static)
         list_view = self.query_one("#paths", ListView)
         list_view.clear()
         list_view.append(ListItem(Label(self.ROOT_LABEL)))
-        try:
-            self._dirs = self._rclone.list_remote_dirs(self._remote)
-            for d in self._dirs:
-                list_view.append(ListItem(Label(d)))
-        except RcloneError as e:
-            error_widget.update(str(e))
+        self._dirs = dirs
+        if error:
+            error_widget.update(error)
+            return
+        error_widget.update("")
+        for directory in self._dirs:
+            list_view.append(ListItem(Label(directory)))
 
     @on(Button.Pressed, "#back")
     def _back(self) -> None:
@@ -154,6 +221,7 @@ class RemotePathScreen(Screen[None]):
         else:
             return
         cast("RcloneCleanupJsonApp", self.app).remote_path = path
+        self._set_loading(True, "Opening path...")
         self.app.push_screen(DestPathScreen(self._rclone, self._remote, path))
 
 
@@ -188,6 +256,11 @@ class DestPathScreen(Screen[None]):
             ),
             Static(id="error", classes="error"),
             Horizontal(
+                LoadingIndicator(id="loading_spinner"),
+                Label("Working...", id="loading_label"),
+                id="loading_row",
+            ),
+            Horizontal(
                 Input(placeholder="Enter path or click Browse", id="path_input"),
                 Button("Browse", id="browse"),
                 id="path_row",
@@ -200,6 +273,17 @@ class DestPathScreen(Screen[None]):
             id="main",
         )
         yield Static("Press ESC to return to previous page", classes="footer-hint")
+
+    def on_mount(self) -> None:
+        self.query_one("#loading_row", Horizontal).display = False
+
+    def _set_loading(self, loading: bool, message: str = "Working...") -> None:
+        self.query_one("#loading_label", Label).update(message)
+        self.query_one("#loading_row", Horizontal).display = loading
+        self.query_one("#path_input", Input).disabled = loading
+        self.query_one("#browse", Button).disabled = loading
+        self.query_one("#continue", Button).disabled = loading
+        self.query_one("#back", Button).disabled = loading
 
     @on(Button.Pressed, "#back")
     def _back(self) -> None:
@@ -234,17 +318,29 @@ class DestPathScreen(Screen[None]):
             error_widget.update("Path is not writable.")
             return
         error_widget.update("")
+        self._set_loading(True, "Scanning remote for JSON files...")
+        self._find_stats_and_continue(p)
+
+    @work(thread=True, exclusive=True)
+    def _find_stats_and_continue(self, base_dest: Path) -> None:
         try:
             stats = self._rclone.find_json_files(self._remote, self._remote_path)
+            self.call_from_thread(self._open_progress, base_dest, stats)
         except RcloneError as e:
-            error_widget.update(str(e))
-            return
+            self.call_from_thread(self._set_continue_error, str(e))
+
+    def _set_continue_error(self, message: str) -> None:
+        self._set_loading(False)
+        self.query_one("#error", Static).update(message)
+
+    def _open_progress(self, base_dest: Path, stats: JsonFileStats) -> None:
+        self._set_loading(False)
         self.app.push_screen(
             ProgressScreen(
                 self._rclone,
                 self._remote,
                 self._remote_path,
-                p,
+                base_dest,
                 stats,
             )
         )
