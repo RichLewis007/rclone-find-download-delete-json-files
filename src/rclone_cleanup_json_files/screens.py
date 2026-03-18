@@ -90,11 +90,11 @@ class RemoteSelectScreen(Screen[None]):
     def _load_remotes_worker(self) -> None:
         try:
             remotes = self._rclone.list_remotes()
-            self.call_from_thread(self._apply_remotes, remotes, "")
+            self.app.call_from_thread(self._apply_remotes, remotes, "")
         except RcloneNotFoundError as e:
-            self.call_from_thread(self._apply_remotes, [], str(e))
+            self.app.call_from_thread(self._apply_remotes, [], str(e))
         except RcloneError as e:
-            self.call_from_thread(self._apply_remotes, [], str(e))
+            self.app.call_from_thread(self._apply_remotes, [], str(e))
 
     def _apply_remotes(self, remotes: list[str], error: str) -> None:
         self._set_loading(False)
@@ -186,9 +186,9 @@ class RemotePathScreen(Screen[None]):
     def _load_dirs_worker(self) -> None:
         try:
             dirs = self._rclone.list_remote_dirs(self._remote)
-            self.call_from_thread(self._apply_dirs, dirs, "")
+            self.app.call_from_thread(self._apply_dirs, dirs, "")
         except RcloneError as e:
-            self.call_from_thread(self._apply_dirs, [], str(e))
+            self.app.call_from_thread(self._apply_dirs, [], str(e))
 
     def _apply_dirs(self, dirs: list[str], error: str) -> None:
         self._set_loading(False)
@@ -325,9 +325,9 @@ class DestPathScreen(Screen[None]):
     def _find_stats_and_continue(self, base_dest: Path) -> None:
         try:
             stats = self._rclone.find_json_files(self._remote, self._remote_path)
-            self.call_from_thread(self._open_progress, base_dest, stats)
+            self.app.call_from_thread(self._open_progress, base_dest, stats)
         except RcloneError as e:
-            self.call_from_thread(self._set_continue_error, str(e))
+            self.app.call_from_thread(self._set_continue_error, str(e))
 
     def _set_continue_error(self, message: str) -> None:
         self._set_loading(False)
@@ -409,18 +409,18 @@ class ProgressScreen(Screen[None]):
                 self._remote_path,
                 self._dest_folder,
             ):
-                self.call_from_thread(log.write_line, line)
+                self.app.call_from_thread(log.write_line, line)
             app = cast("RcloneCleanupJsonApp", self.app)
             app.base_dest = self._base_dest
             app.dest_folder = self._dest_folder
             app.stats = self._stats
             self.app.push_screen(CompleteScreen())
         except RcloneError as e:
-            self.call_from_thread(log.write_line, f"Error: {e}")
-            self.call_from_thread(self._show_back_button)
+            self.app.call_from_thread(log.write_line, f"Error: {e}")
+            self.app.call_from_thread(self._show_back_button)
         except Exception as e:
-            self.call_from_thread(log.write_line, f"Error: {e}")
-            self.call_from_thread(self._show_back_button)
+            self.app.call_from_thread(log.write_line, f"Error: {e}")
+            self.app.call_from_thread(self._show_back_button)
 
 
 class MoveProgressScreen(Screen[None]):
@@ -477,14 +477,14 @@ class MoveProgressScreen(Screen[None]):
                 self._remote_path,
                 dry_run=self._dry_run,
             ):
-                self.call_from_thread(log.write_line, line)
-            self.call_from_thread(self.dismiss, True)
+                self.app.call_from_thread(log.write_line, line)
+            self.app.call_from_thread(self.dismiss, True)
         except RcloneError as e:
-            self.call_from_thread(log.write_line, f"Error: {e}")
-            self.call_from_thread(self._show_close_button)
+            self.app.call_from_thread(log.write_line, f"Error: {e}")
+            self.app.call_from_thread(self._show_close_button)
         except Exception as e:
-            self.call_from_thread(log.write_line, f"Error: {e}")
-            self.call_from_thread(self._show_close_button)
+            self.app.call_from_thread(log.write_line, f"Error: {e}")
+            self.app.call_from_thread(self._show_close_button)
 
 
 class CompleteScreen(Screen[None]):
