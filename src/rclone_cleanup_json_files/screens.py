@@ -49,7 +49,6 @@ class RemoteSelectScreen(Screen[None]):
             Static(id="error", classes="error"),
             ListView(id="remotes"),
             Horizontal(
-                LoadingIndicator(id="loading_spinner"),
                 Label("Loading remotes...", id="loading_label"),
                 id="loading_row",
             ),
@@ -63,8 +62,8 @@ class RemoteSelectScreen(Screen[None]):
         yield Static("Press ESC to exit", classes="footer-hint")
 
     def on_mount(self) -> None:
-        self.query_one("#loading_row", Horizontal).display = False
-        self._load_remotes()
+        self._set_loading(True, "Loading remotes...")
+        self.set_timer(0.05, self._load_remotes)
 
     def on_screen_resume(self) -> None:
         self.query_one("#remotes", ListView).index = None
@@ -83,7 +82,9 @@ class RemoteSelectScreen(Screen[None]):
     def _set_loading(self, loading: bool, message: str = "Working...") -> None:
         self.query_one("#loading_label", Label).update(message)
         self.query_one("#loading_row", Horizontal).display = loading
-        self.query_one("#remotes", ListView).disabled = loading
+        list_view = self.query_one("#remotes", ListView)
+        list_view.loading = loading
+        list_view.disabled = loading
         self.query_one("#refresh", Button).disabled = loading
 
     @work(thread=True, exclusive=True)
@@ -150,7 +151,6 @@ class RemotePathScreen(Screen[None]):
                 id="paths",
             ),
             Horizontal(
-                LoadingIndicator(id="loading_spinner"),
                 Label("Loading paths...", id="loading_label"),
                 id="loading_row",
             ),
@@ -163,8 +163,8 @@ class RemotePathScreen(Screen[None]):
         yield Static("Press ESC to return to previous page", classes="footer-hint")
 
     def on_mount(self) -> None:
-        self.query_one("#loading_row", Horizontal).display = False
-        self._load_dirs()
+        self._set_loading(True, "Loading paths...")
+        self.set_timer(0.05, self._load_dirs)
 
     def on_screen_resume(self) -> None:
         self.query_one("#paths", ListView).index = None
@@ -179,7 +179,9 @@ class RemotePathScreen(Screen[None]):
     def _set_loading(self, loading: bool, message: str = "Working...") -> None:
         self.query_one("#loading_label", Label).update(message)
         self.query_one("#loading_row", Horizontal).display = loading
-        self.query_one("#paths", ListView).disabled = loading
+        list_view = self.query_one("#paths", ListView)
+        list_view.loading = loading
+        list_view.disabled = loading
         self.query_one("#back", Button).disabled = loading
 
     @work(thread=True, exclusive=True)
