@@ -71,7 +71,13 @@ class RcloneCleanupJsonApp(App[None]):
     #loading_row {
         margin: 0 0 1 0;
         height: auto;
+        min-height: 2;
         align-horizontal: center;
+    }
+
+    LoadingIndicator {
+        min-height: 2;
+        min-width: 8;
     }
 
     #loading_label {
