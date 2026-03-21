@@ -1,5 +1,6 @@
 """Textual screens for rclone-cleanup-json-files."""
 
+import re
 import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
@@ -16,6 +17,7 @@ from textual.widgets import (
     ListView,
     LoadingIndicator,
     Log,
+    ProgressBar,
     Static,
 )
 from textual_fspicker import SelectDirectory
@@ -320,7 +322,10 @@ class DestPathScreen(Screen[None]):
             error_widget.update("Path is not writable.")
             return
         error_widget.update("")
-        self._set_loading(True, "Scanning remote for JSON files...")
+        self._set_loading(
+            True,
+            "Scanning remote for JSON files… (searching all subdirectories)",
+        )
         self._find_stats_and_continue(p)
 
     @work(thread=True, exclusive=True)
@@ -381,6 +386,8 @@ class ProgressScreen(Screen[None]):
                 f"Folders: {self._stats.folder_count}",
                 id="stats",
             ),
+            Static("Starting transfer...", id="status"),
+            ProgressBar(total=100, show_eta=False, id="progress_bar"),
             Log(highlight=True, id="log"),
             Horizontal(
                 Button("Back", id="back"),
@@ -398,9 +405,33 @@ class ProgressScreen(Screen[None]):
     def _show_back_button(self) -> None:
         self.query_one("#error_buttons", Horizontal).display = True
 
+    def _update_progress(self, status: str, percent: int | None = None) -> None:
+        """Update status text and progress bar from main thread."""
+        self.query_one("#status", Static).update(status)
+        if percent is not None:
+            self.query_one("#progress_bar", ProgressBar).progress = percent
+
     @on(Button.Pressed, "#back")
     def _back(self) -> None:
         self.app.pop_screen()
+
+    def _parse_rclone_progress(self, line: str) -> tuple[str | None, int | None]:
+        """Parse rclone -P output for status and percentage.
+        Returns (status_text, percent) or (None, None) if not a progress line.
+        """
+        line = line.strip().replace("\r", " ")
+        # Match "Transferred: 12 / 45, 27%" (file count) first for friendlier status
+        file_match = re.search(r"Transferred:\s*(\d+)\s*/\s*(\d+)(?:,\s*(\d+)%)?", line)
+        if file_match:
+            cur, total, pct = file_match.group(1), file_match.group(2), file_match.group(3)
+            pct_val = int(pct) if pct else (int(cur) * 100 // int(total)) if int(total) else 0
+            return (f"Files: {cur} / {total} ({pct_val}%)", pct_val)
+        # Match "Transferred: ... 22% ..." (bytes) for fallback
+        trans_match = re.search(r"Transferred:.*?(\d+)%", line)
+        if trans_match:
+            pct = int(trans_match.group(1))
+            return (line.strip()[:80], pct)
+        return (None, None)
 
     @work
     async def _do_copy(self) -> None:
@@ -411,6 +442,9 @@ class ProgressScreen(Screen[None]):
                 self._remote_path,
                 self._dest_folder,
             ):
+                status, percent = self._parse_rclone_progress(line)
+                if status is not None and percent is not None:
+                    self.app.call_from_thread(self._update_progress, status, percent)
                 self.app.call_from_thread(log.write_line, line)
             app = cast("RcloneCleanupJsonApp", self.app)
             app.base_dest = self._base_dest
