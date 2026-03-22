@@ -54,6 +54,11 @@ class RcloneCleanupJsonApp(App[None]):
         height: auto;
     }
 
+    #hint {
+        width: 100%;
+        max-width: 100%;
+    }
+
     #path_row {
         margin: 1 0;
     }
