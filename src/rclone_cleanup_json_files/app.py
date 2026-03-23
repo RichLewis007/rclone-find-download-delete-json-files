@@ -1,5 +1,7 @@
 """Find, download and delete JSON files from cloud drives."""
 
+import signal
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +20,7 @@ class RcloneCleanupJsonApp(App[None]):
 
     BINDINGS = [
         Binding("escape", "escape_back_or_exit", "Exit", priority=True),
+        Binding("ctrl+c", "escape_back_or_exit", "Exit", priority=True),
     ]
 
     CSS = """
@@ -129,7 +132,34 @@ class RcloneCleanupJsonApp(App[None]):
         yield Footer()
 
     def on_mount(self) -> None:
+        self._register_signal_handlers()
         self.push_screen(RemoteSelectScreen(self.rclone))
+
+    def _register_signal_handlers(self) -> None:
+        """Register SIGINT/SIGTERM for graceful shutdown (CTRL-C)."""
+
+        def handle_interrupt(*_args: object) -> None:
+            self.exit()
+
+        use_signal_fallback = False
+        try:
+            import asyncio
+
+            loop = asyncio.get_running_loop()
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                try:
+                    loop.add_signal_handler(sig, handle_interrupt)
+                except (NotImplementedError, OSError):
+                    use_signal_fallback = True
+                    break
+        except RuntimeError:
+            use_signal_fallback = True
+
+        if use_signal_fallback:
+            try:
+                signal.signal(signal.SIGINT, handle_interrupt)
+            except (ValueError, OSError):
+                pass
 
     def action_escape_back_or_exit(self) -> None:
         """Exit on first screen; otherwise pop or dismiss.
@@ -154,7 +184,10 @@ class RcloneCleanupJsonApp(App[None]):
 def main() -> None:
     """Entry point for the application."""
     app = RcloneCleanupJsonApp()
-    app.run()
+    try:
+        app.run()
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == "__main__":
