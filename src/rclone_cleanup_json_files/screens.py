@@ -246,16 +246,33 @@ class DestPathScreen(Screen[None]):
         self._rclone = rclone
         self._remote = remote
         self._remote_path = remote_path
+        self._dest_name = (
+            f"{remote}-{remote_path}" if remote_path else remote
+        )
+
+    def _update_hint(self) -> None:
+        raw = self.query_one("#path_input", Input).value.strip()
+        hint = self.query_one("#hint", Static)
+        if raw:
+            try:
+                base = Path(raw).expanduser().resolve()
+                full_path = base / self._dest_name
+                hint.update(f"Files will be saved to:\n{full_path}/")
+            except (OSError, RuntimeError):
+                hint.update(
+                    f"Files will be saved to:\n{raw.rstrip('/')}/{self._dest_name}/"
+                )
+        else:
+            hint.update(
+                "Files will be saved to:\n(select or enter a path to see destination)"
+            )
 
     def compose(self) -> None:
-        dest_name = (
-            f"{self._remote}-{self._remote_path}" if self._remote_path else self._remote
-        )
         yield Header()
         yield Vertical(
             Label("Select local destination folder", classes="title"),
-            Label(
-                f"Files will be saved to: .../{dest_name}/",
+            Static(
+                "Files will be saved to:\n(select or enter a path to see destination)",
                 id="hint",
             ),
             Static(id="error", classes="error"),
@@ -293,12 +310,17 @@ class DestPathScreen(Screen[None]):
     def _back(self) -> None:
         self.app.pop_screen()
 
+    @on(Input.Changed, "#path_input")
+    def _on_path_changed(self) -> None:
+        self._update_hint()
+
     @on(Button.Pressed, "#browse")
     @work
     async def _browse(self) -> None:
         if path := await self.app.push_screen_wait(SelectDirectory()):
             self.query_one("#path_input", Input).value = str(path)
             self.query_one("#error", Static).update("")
+            self._update_hint()
 
     @on(Button.Pressed, "#continue")
     def _continue(self) -> None:
